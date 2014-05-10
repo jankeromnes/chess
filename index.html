@@ -1,0 +1,176 @@
+<!doctype html>
+<meta charset=utf-8>
+<title> chess </title>
+
+<style>
+  table {
+    text-align: center;
+    font-size: 30px;
+    font-family: sans-serif;
+  }
+  table > tr > td {
+    height: 60px;
+    width: 60px;
+    font-size: 50px;
+    background-color: whitesmoke;
+  }
+  .piece {
+    user-select: none;
+    cursor: move;
+  }
+  table > tr:nth-child(odd) > td:nth-child(even),
+  table > tr:nth-child(even) > td:nth-child(odd) {
+    background-color: slategrey;
+  }
+</style>
+
+<table id=board cellspacing=0></table>
+
+<script>
+
+  function create(layout) {
+    var board = { rows: [], whites: [], blacks: [], moves: [], score: 0 }
+    var row = []; board.rows.unshift(row);
+    for (var i = 0; i < layout.length; i++) {
+      var letter = layout[i].toUpperCase();
+      if (letter === ' ') continue;
+      if (letter === '\n') {
+        row = []; board.rows.unshift(row);
+        continue;
+      }
+      if (!types[letter]) {
+        row.push(null);
+        continue;
+      }
+      var piece = {
+        type: types[letter],
+        white: letter === layout[i],
+        x: 0, y: 0
+      };
+      row.push(piece);
+    }
+    var rows = board.rows;
+    for (var i = 0; i < rows.length; i++) {
+      for (var j = 0; j < rows[i].length; j++) {
+        var piece = rows[i][j];
+        if (piece === null) continue;
+        piece.x = i; piece.y = j;
+        if (piece.white) {
+          board.whites.push(piece);
+          board.score += piece.type.value;
+        } else {
+          board.blacks.push(piece);
+          board.score -= piece.type.value;
+        }
+      }
+    }
+    return board;
+  }
+
+  function populate(table, board) {
+    var fragment = document.createDocumentFragment(),
+        rows = board.rows;
+    for (var i = rows.length - 1; i >= 0; i--) {
+      var row = rows[i];
+      var tr = document.createElement('tr');
+      fragment.appendChild(tr);
+      for (var j = 0; j < row.length; j++) {
+        var td = document.createElement('td');
+        tr.appendChild(td);
+        if (row[j] !== null) {
+          var div = document.createElement('div');
+          div.draggable = true;
+          div.addEventListener('dragstart', function(e) {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', 'blah');
+          }, false);
+          div.classList.add('piece');
+          div.textContent = row[j].type[row[j].white ? 'white' : 'black'];
+          td.appendChild(div);
+        }
+      }
+    }
+    table.appendChild(fragment);
+  }
+
+  var types = {};
+  types.P = {
+    name: 'pawn', value: 1, white: '♙', black: '♟',
+    getmoves: function(board, white, x, y) {
+      var moves = [],
+          dir = white ? 1 : -1,
+          row = board.rows[x + dir];
+      if (!row) {
+        return moves;
+      }
+      if (row[y] === null) {
+        moves.push('move ' + (x+dir) + ':' + y);
+      }
+      if (row[y-1] && (row[y-1].white !== white)) {
+        moves.push('take ' + (x+dir) + ':' + (y-1));
+      }
+      if (row[y+1] && (row[y+1].white !== white)) {
+        moves.push('take ' + (x+dir) + ':' + (y+1));
+      }
+      return moves;
+    }
+  };
+  types.R = {
+    name: 'rook', value: 5, white: '♖', black: '♜',
+    getmoves: function(board, white, x, y) {
+      var moves = [],
+          i = x,
+          j = y,
+          row;
+      for(var dir = -1; dir < 2; dir+=2) {
+        i = x; j = y + dir; row = board.rows[i];
+        for (;;) {
+          if (row[j] === undefined) break;
+          if (row[j] !== null) {
+            if (row[j].white !== white) {
+              moves.push('take ' + i + ':' + j);
+            }
+            break;
+          }
+          moves.push('move ' + i + ':' + j);
+          j += dir;
+        }
+        i = x + dir; j = y; row = board.rows[i];
+        while (row) {
+          if (row[j] !== null) {
+            if (row[j].white !== white) {
+              moves.push('take ' + i + ':' + j);
+            }
+            break;
+          }
+          moves.push('move ' + i + ':' + j);
+          i += dir; row = board.rows[i];
+        }
+      }
+      return moves;
+    }
+  };
+
+  var classic =
+    'r n b q k b n r\n' +
+    'p p p p p p p p\n' +
+    '. . . . . . . .\n' +
+    '. . . . . . . .\n' +
+    '. . . . . . . .\n' +
+    '. . . . . . . .\n' +
+    'P P P P P P P P\n' +
+    'R N B Q K B N R';
+
+  var history = [],
+      board = create(classic),
+      table = document.getElementById('board');
+  
+  populate(table, board);
+
+  console.log(JSON.stringify(board,0,2));
+
+  board.whites.forEach(function(p) {
+    console.log(p.type.getmoves(board, p.white, p.x, p.y));
+  })
+
+</script>
