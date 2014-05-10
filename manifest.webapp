@@ -1,13 +1,11 @@
 {
-  "name": "Chess",
-  "description": "Universal Chess AI",
+  "name": "chess",
   "launch_path": "/index.html",
   "developer": {
     "name": "Jan Keromnes",
-    "url": "http://nyan.cat"
+    "url": "jan.keromnes.com"
   },
   "permissions": {},
   "installs_allowed_from": ["*"],
-  "icons": {
-  }
+  "icons": {}
 }
