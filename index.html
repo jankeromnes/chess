@@ -22,12 +22,14 @@
   table > tr:nth-child(even) > td:nth-child(odd) {
     background-color: slategrey;
   }
-  html {
+  html, body {
     /*overflow: hidden;*/
+    margin: 0;
   }
   board, row {
     display: block;
     font-size: 0;
+    margin: 0;
   }
   square, piece {
     height: 40px; width: 40px;
@@ -51,45 +53,6 @@
     color: white;
   }
 </style>
-
-<!--
-<board>
-  <row>
-    <square></square>
-    <square></square>
-    <square></square>
-    <square></square>
-  </row>
-  <row>
-    <square id=l0></square>
-    <square id=l1></square>
-    <square id=l2></square>
-    <square id=l3></square>
-  </row>
-  <row>
-    <square>
-      <piece id=p0>♟</piece>
-    </square>
-    <square>
-      <piece id=p1>♟</piece>
-    </square>
-    <square>
-      <piece id=p2>♟</piece>
-    </square>
-    <square>
-      <piece id=p3>♟</piece>
-    </square>
-  </row>
-  <row>
-    <square></square>
-    <square></square>
-    <square></square>
-    <square></square>
-  </row>
-</board>
-
-<br>
--->
 
 <table id=board cellspacing=0></table>
 
@@ -119,85 +82,98 @@
 
   })();
 
-  function create(layout) {
-    var board = { rows: [], whites: [], blacks: [], moves: [], score: 0 };
-    var row = []; board.rows.unshift(row);
-    for (var i = 0; i < layout.length; i++) {
-      var letter = layout[i].toUpperCase();
-      if (letter === ' ') continue;
-      if (letter === '\n') {
-        row = []; board.rows.unshift(row);
-        continue;
-      }
-      if (!types[letter]) {
-        row.push(null);
-        continue;
-      }
-      var piece = {
-        type: types[letter],
-        white: letter === layout[i],
-        x: 0, y: 0
-      };
-      row.push(piece);
-    }
-    var rows = board.rows;
-    for (var i = 0; i < rows.length; i++) {
-      for (var j = 0; j < rows[i].length; j++) {
-        var piece = rows[i][j];
-        if (piece === null) continue;
-        piece.x = i; piece.y = j;
+  function Board(layout) {
+    this.rows = [];
+    this.whites = [];
+    this.blacks = [];
+    this.moves = [];
+    this.score = 0;
+    
+    this.layout(layout || this.classic);
+  }
+
+  Board.prototype = {
+
+    classic:
+      'r n b q k b n r\n' +
+      'p p p p p p p p\n' +
+      '. . . . . . . .\n' +
+      '. . . . . . . .\n' +
+      '. . . . . . . .\n' +
+      '. . . . . . . .\n' +
+      'P P P P P P P P\n' +
+      'R N B Q K B N R',
+
+    layout: function(layout) {
+
+      // read layout and fill rows with pieces or null
+      var row = []; this.rows.unshift(row);
+      for (var i = 0; i < layout.length; i++) {
+        var letter = layout[i].toUpperCase();
+
+        // skip spaces
+        if (letter === ' ') continue;
+
+        // new line, new row
+        if (letter === '\n') {
+          row = []; this.rows.unshift(row);
+          continue;
+        }
+
+        // no piece ('.') or unknown type
+        if (!types[letter]) {
+          row.push(null);
+          continue;
+        }
+
+        // create piece
+        var piece = {
+          type: letter,
+          white: letter === layout[i],
+          x: 0, // updated post-layout
+          y: row.length
+        };
+        row.push(piece);
+
+        // add piece to whites/blacks list and update initial score
         if (piece.white) {
-          board.whites.push(piece);
-          board.score += piece.type.value;
+          this.whites.push(piece);
+          this.score += types[piece.type].value;
         } else {
-          board.blacks.push(piece);
-          board.score -= piece.type.value;
+          this.blacks.push(piece);
+          this.score -= types[piece.type].value;
         }
       }
-    }
-    return board;
-  }
 
-  function dom(board) {
-    var element = document.createElement('board');
-    for (var i = board.rows.length - 1; i >= 0; i--) {
-      var r = board.rows[i], row = document.createElement('row');
-      for (var j = 0; j < r.length; j++) {
-        var square = document.createElement('square');
-        if (r[j] !== null) {
-          var piece = document.createElement('piece');
-          piece.textContent = r[j].type.unicode;
-          piece.style.transform = 'translate(' + (7 + 40 * j) + 'px,' + (7 + 40 * i) + 'px)';
-          piece.classList.add(r[j].white ? 'white' : 'black');
-          square.appendChild(piece);
-        }
-        row.appendChild(square);
-      }
-      element.appendChild(row);
-    }
-    return element;
-  }
+      // layout was read upside-down, fix pieces' x coord
+      this.rows.forEach(function (row, x) {
+        row.forEach(function (piece) {
+          if (piece !== null) piece.x = x;
+        });
+      });
+    },
 
-  /*function populate(table, board) {
-    var fragment = document.createDocumentFragment(),
-        rows = board.rows;
-    for (var i = rows.length - 1; i >= 0; i--) {
-      var row = rows[i];
-      var tr = document.createElement('tr');
-      fragment.appendChild(tr);
-      for (var j = 0; j < row.length; j++) {
-        var td = document.createElement('td');
-        tr.appendChild(td);
-        if (row[j] !== null) {
-          var div = document.createElement('div');
-          div.classList.add('piece');
-          div.textContent = row[j].type.unicode;
-          td.appendChild(div);
+    build: function() {
+      this.element = document.createElement('board');
+      for (var i = 0; i < this.rows.length; i++) {
+        var r = this.rows[this.rows.length - i - 1], row = document.createElement('row');
+        for (var j = 0; j < r.length; j++) {
+          var square = document.createElement('square');
+          if (r[j] !== null) {
+            var piece = document.createElement('piece');
+            piece.textContent = types[r[j].type].unicode;
+            piece.style.transform = 'translate(' + (40 * j) + 'px,' + (40 * i) + 'px)';
+            piece.classList.add(r[j].white ? 'white' : 'black');
+            square.appendChild(piece);
+          }
+          row.appendChild(square);
         }
+        this.element.appendChild(row);
       }
+      return this.element;
     }
-    table.appendChild(fragment);
-  }*/
+
+  };
 
   var types = {};
   types.P = {
@@ -228,7 +204,7 @@
           i = x,
           j = y,
           row;
-      for(var dir = -1; dir < 2; dir+=2) {
+      for (var dir = -1; dir < 2; dir+=2) {
         i = x; j = y + dir; row = board.rows[i];
         for (;;) {
           if (row[j] === undefined) break;
@@ -257,28 +233,21 @@
     }
   };
 
-  var classic =
-    'r n b q k b n r\n' +
-    'p p p p p p p p\n' +
-    '. . . . . . . .\n' +
-    '. . . . . . . .\n' +
-    '. . . . . . . .\n' +
-    '. . . . . . . .\n' +
-    'P P P P P P P P\n' +
-    'R N B Q K B N R';
-
   var history = [],
-      board = create(classic),
+      //board = create(classic),
       table = document.getElementById('board');
   
   //populate(table, board);
 
-  table.parentElement.appendChild(dom(board));
+  //table.parentElement.appendChild(dom(board));
+
+  var board = new Board();
+  table.parentElement.appendChild(board.build());
 
   console.log(JSON.stringify(board,0,2));
 
-  board.whites.forEach(function(p) {
-    console.log(p.type.getmoves(board, p.white, p.x, p.y));
-  })
+  //board.whites.forEach(function(p) {
+    //console.log(types[p.type].getmoves(board, p.white, p.x, p.y));
+  //})
 
 </script>
