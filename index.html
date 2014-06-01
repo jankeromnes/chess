@@ -1,12 +1,12 @@
 <!doctype html>
-<meta charset=utf-8>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1.0">
 <title> chess </title>
 
 <style>
   table {
     text-align: center;
     font-size: 30px;
-    font-family: sans-serif;
   }
   table > tr > td {
     height: 60px;
@@ -22,14 +22,105 @@
   table > tr:nth-child(even) > td:nth-child(odd) {
     background-color: slategrey;
   }
+  html {
+    /*overflow: hidden;*/
+  }
+  board, row {
+    display: block;
+    font-size: 0;
+  }
+  square, piece {
+    height: 40px; width: 40px;
+  }
+  square {
+    display: inline-block;
+    background-color: lightsteelblue;
+  }
+  board > row:nth-child(odd) > square:nth-child(even),
+  board > row:nth-child(even) > square:nth-child(odd) {
+    background-color: slategrey;
+  }
+  piece {
+    position: absolute;
+    top: 0; left: 0;
+    font-size: 24pt;
+    text-align: center;
+    user-select: none;
+  }
+  piece.white {
+    color: white;
+  }
 </style>
+
+<!--
+<board>
+  <row>
+    <square></square>
+    <square></square>
+    <square></square>
+    <square></square>
+  </row>
+  <row>
+    <square id=l0></square>
+    <square id=l1></square>
+    <square id=l2></square>
+    <square id=l3></square>
+  </row>
+  <row>
+    <square>
+      <piece id=p0>♟</piece>
+    </square>
+    <square>
+      <piece id=p1>♟</piece>
+    </square>
+    <square>
+      <piece id=p2>♟</piece>
+    </square>
+    <square>
+      <piece id=p3>♟</piece>
+    </square>
+  </row>
+  <row>
+    <square></square>
+    <square></square>
+    <square></square>
+    <square></square>
+  </row>
+</board>
+
+<br>
+-->
 
 <table id=board cellspacing=0></table>
 
 <script>
 
+  (function() {
+    /*var p = [], l = [];
+    for (var i = 0; i < 4; i++) {
+      var pi = document.getElementById('p' + i),
+          li = document.getElementById('l' + i);
+      p.push(pi); l.push(li);
+
+      li.addEventListener('touchmove', function(e) {
+        console.log('touchmove', i);
+        var touch = e.touches[0];
+        pi.style.transform = 'translate(' + (touch.pageX - 10) + 'px,' + (touch.pageY - 50) + 'px)';
+      });
+    }*/
+
+    /*p[0].addEventListener('dragstart', function(e) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', 'p0');
+    });
+    l[0].addEventListener('dragover', function(e) {
+      e.preventDefault();
+    });*/
+
+  })();
+
   function create(layout) {
-    var board = { rows: [], whites: [], blacks: [], moves: [], score: 0 }
+    var board = { rows: [], whites: [], blacks: [], moves: [], score: 0 };
     var row = []; board.rows.unshift(row);
     for (var i = 0; i < layout.length; i++) {
       var letter = layout[i].toUpperCase();
@@ -67,7 +158,27 @@
     return board;
   }
 
-  function populate(table, board) {
+  function dom(board) {
+    var element = document.createElement('board');
+    for (var i = board.rows.length - 1; i >= 0; i--) {
+      var r = board.rows[i], row = document.createElement('row');
+      for (var j = 0; j < r.length; j++) {
+        var square = document.createElement('square');
+        if (r[j] !== null) {
+          var piece = document.createElement('piece');
+          piece.textContent = r[j].type.unicode;
+          piece.style.transform = 'translate(' + (7 + 40 * j) + 'px,' + (7 + 40 * i) + 'px)';
+          piece.classList.add(r[j].white ? 'white' : 'black');
+          square.appendChild(piece);
+        }
+        row.appendChild(square);
+      }
+      element.appendChild(row);
+    }
+    return element;
+  }
+
+  /*function populate(table, board) {
     var fragment = document.createDocumentFragment(),
         rows = board.rows;
     for (var i = rows.length - 1; i >= 0; i--) {
@@ -79,23 +190,18 @@
         tr.appendChild(td);
         if (row[j] !== null) {
           var div = document.createElement('div');
-          div.draggable = true;
-          div.addEventListener('dragstart', function(e) {
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', 'blah');
-          }, false);
           div.classList.add('piece');
-          div.textContent = row[j].type[row[j].white ? 'white' : 'black'];
+          div.textContent = row[j].type.unicode;
           td.appendChild(div);
         }
       }
     }
     table.appendChild(fragment);
-  }
+  }*/
 
   var types = {};
   types.P = {
-    name: 'pawn', value: 1, white: '♙', black: '♟',
+    name: 'pawn', value: 1, unicode: '♟',
     getmoves: function(board, white, x, y) {
       var moves = [],
           dir = white ? 1 : -1,
@@ -116,7 +222,7 @@
     }
   };
   types.R = {
-    name: 'rook', value: 5, white: '♖', black: '♜',
+    name: 'rook', value: 5, unicode: '♜',
     getmoves: function(board, white, x, y) {
       var moves = [],
           i = x,
@@ -165,7 +271,9 @@
       board = create(classic),
       table = document.getElementById('board');
   
-  populate(table, board);
+  //populate(table, board);
+
+  table.parentElement.appendChild(dom(board));
 
   console.log(JSON.stringify(board,0,2));
 
