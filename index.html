@@ -47,6 +47,7 @@
     top: 0; left: 0;
     font-size: 24pt;
     text-align: center;
+    cursor: default;
     user-select: none;
   }
   piece.white {
@@ -82,13 +83,68 @@
 
   })();
 
+  var types = {};
+  types.P = {
+    name: 'pawn', value: 1, unicode: '♟',
+    play: function(board, white, x, y) {
+      var dir = white ? 1 : -1,
+          row = board.rows[x + dir];
+      if (!row) {
+        return;
+      }
+      if (row[y] === null) {
+        //moves.push('move ' + (x+dir) + ':' + y);
+      }
+      if (row[y-1] && (row[y-1].white !== white)) {
+        //moves.push('take ' + (x+dir) + ':' + (y-1));
+      }
+      if (row[y+1] && (row[y+1].white !== white)) {
+        //moves.push('take ' + (x+dir) + ':' + (y+1));
+      }
+    }
+  };
+  types.R = {
+    name: 'rook', value: 5, unicode: '♜',
+    play: function(board, white, x, y) {
+      var i = x,
+          j = y,
+          row;
+      for (var dir = -1; dir < 2; dir += 2) {
+        i = x; j = y + dir; row = board.rows[i];
+        for (;;) {
+          if (row[j] === undefined) break;
+          if (row[j] !== null) {
+            if (row[j].white !== white) {
+              //moves.push('take ' + i + ':' + j);
+            }
+            break;
+          }
+          //moves.push('move ' + i + ':' + j);
+          j += dir;
+        }
+        i = x + dir; j = y; row = board.rows[i];
+        while (row) {
+          if (row[j] !== null) {
+            if (row[j].white !== white) {
+              //moves.push('take ' + i + ':' + j);
+            }
+            break;
+          }
+          //moves.push('move ' + i + ':' + j);
+          i += dir; row = board.rows[i];
+        }
+      }
+    }
+  };
+
   function Board(layout) {
     this.rows = [];
     this.whites = [];
     this.blacks = [];
     this.moves = [];
+    this.history = [];
     this.score = 0;
-    
+
     this.layout(layout || this.classic);
   }
 
@@ -171,66 +227,32 @@
         this.element.appendChild(row);
       }
       return this.element;
-    }
+    },
 
-  };
-
-  var types = {};
-  types.P = {
-    name: 'pawn', value: 1, unicode: '♟',
-    getmoves: function(board, white, x, y) {
-      var moves = [],
-          dir = white ? 1 : -1,
-          row = board.rows[x + dir];
-      if (!row) {
-        return moves;
-      }
-      if (row[y] === null) {
-        moves.push('move ' + (x+dir) + ':' + y);
-      }
-      if (row[y-1] && (row[y-1].white !== white)) {
-        moves.push('take ' + (x+dir) + ':' + (y-1));
-      }
-      if (row[y+1] && (row[y+1].white !== white)) {
-        moves.push('take ' + (x+dir) + ':' + (y+1));
-      }
-      return moves;
-    }
-  };
-  types.R = {
-    name: 'rook', value: 5, unicode: '♜',
-    getmoves: function(board, white, x, y) {
-      var moves = [],
-          i = x,
-          j = y,
-          row;
-      for (var dir = -1; dir < 2; dir+=2) {
-        i = x; j = y + dir; row = board.rows[i];
-        for (;;) {
-          if (row[j] === undefined) break;
-          if (row[j] !== null) {
-            if (row[j].white !== white) {
-              moves.push('take ' + i + ':' + j);
-            }
-            break;
-          }
-          moves.push('move ' + i + ':' + j);
-          j += dir;
-        }
-        i = x + dir; j = y; row = board.rows[i];
-        while (row) {
-          if (row[j] !== null) {
-            if (row[j].white !== white) {
-              moves.push('take ' + i + ':' + j);
-            }
-            break;
-          }
-          moves.push('move ' + i + ':' + j);
-          i += dir; row = board.rows[i];
+    play: function(piece, x, y) {
+      var taken = this.rows[x][y];
+      if (taken) {
+        if (taken.white) {
+          this.whites.splice(this.whites.indexOf(taken),1); // TODO optimize this.{whites,blacks} from [] to {}
+          this.score -= types[taken.type].value;
+        } else {
+          this.blacks.splice(this.blacks.indexOf(taken),1);
+          this.score += types[taken.type].value;
         }
       }
-      return moves;
+      this.rows[piece.x][piece.y] = null;
+      this.rows[x][y] = piece;
+      piece.x = x;
+      piece.y = y;
+      return true;
+    },
+
+    compute: function(maxdepth) {
+      // TODO fill this.moves, keeping track of max
+      var bestscore = 0;
+
     }
+
   };
 
   var history = [],
@@ -245,6 +267,8 @@
   table.parentElement.appendChild(board.build());
 
   console.log(JSON.stringify(board,0,2));
+  
+  board.compute(2);
 
   //board.whites.forEach(function(p) {
     //console.log(types[p.type].getmoves(board, p.white, p.x, p.y));
